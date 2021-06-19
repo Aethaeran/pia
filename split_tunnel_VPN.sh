@@ -40,12 +40,14 @@ DeviceAllow=/dev/net/tun rw
 WantedBy=multi-user.target
 EOF
 sudo systemctl enable openvpn@openvpn.service
+
 echo Create PIA Configuration File for Split Tunneling
 echo Get the Required Certificates for PIA
 sudo apt-get install unzip -y
 cd /etc/openvpn
 sudo wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
 sudo unzip openvpn.zip
+
 echo Create Modified PIA Configuration File for Split Tunneling
 cat > /etc/openvpn/openvpn.conf << EOF
 client
@@ -75,15 +77,18 @@ route-noexec
 up /etc/openvpn/iptables.sh
 down /etc/openvpn/update-resolv-conf
 EOF
+
 echo Make OpenVPN Auto Login on Service Start
 echo $piauservar > /etc/openvpn/login.txt
 echo $piapassvar >> /etc/openvpn/login.txt
+
 echo Configure VPN DNS Servers to Stop DNS Leaks
 sed -i.bak -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
 sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 
 echo Split Tunneling with iptables and Routing Tables
+sudo adduser $username
 sudo adduser vpn
 sudo usermod -aG vpn $username
 sudo usermod -aG $username vpn
