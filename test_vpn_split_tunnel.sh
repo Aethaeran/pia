@@ -50,12 +50,6 @@ fi
 
 
 echo
-echo "${green}Testing the VPN Split Tunnel${devoid}"
-echo "${yellow}Press Q to escape service status${devoid}"
-echo
-sudo systemctl restart openvpn@openvpn.service
-echo
-sudo systemctl status openvpn@openvpn.service
 echo
 echo "${green}Check IP address${devoid}"
 echo "${green}Regular User${devoid}"
@@ -81,3 +75,11 @@ echo "${yellow}If outupt is following, everything is ok:
 nameserver 209.222.18.222
 nameserver 209.222.18.218
 nameserver 8.8.8.8${devoid}"
+
+
+echo "${green}Testing the VPN Split Tunnel${devoid}"
+echo "${yellow}Press Q to escape service status${devoid}"
+echo
+sudo systemctl restart openvpn@openvpn.service
+echo
+sudo systemctl status openvpn@openvpn.service
