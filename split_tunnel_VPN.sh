@@ -1,16 +1,26 @@
+#!/bin/bash
+
+# By Georgiy Sitnikov.
+#
+# Will do setup Split Tunnel. More under:
+# https://gist.github.com/GAS85/4e40ece16ffa748e7138b9aa4c37ca52
+#
+# AS-IS without any warranty
+
 # Check if you are root user, otherwise will not work
 [[ $(id -u) -eq 0 ]] || { echo >&2 "Must be root to run this script."; exit 1; }
 
-echo "Please enter your PIA username and Password"
-read -p 'PIA Username: ' piauservar
-read -p 'PIA Password: ' piapassvar
-echo "Please enter your regular username"
-read -p 'Username: ' uservar
+# Optinally
+#wget https://swupdate.openvpn.net/repos/repo-public.gpg -O - | apt-key add -
+#echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" | tee -a /etc/apt/sources.list.d/openvpn.list
 
-echo Install OpenVPN
-sudo apt-get update
-sudo apt-get install openvpn -y
-echo Create systemd Service for OpenVPN
+echo "Step 1. Install needed Packages"
+echo "Install OpenVPN, iptables and unzip"
+
+apt-get update
+apt-get install openvpn unzip iptables -y
+echo
+echo "Step 2. Create systemd Service for OpenVPN"
 cat > /etc/systemd/system/openvpn@openvpn.service << EOF
 [Unit]
 # HTPC Guides - www.htpcguides.com
@@ -39,16 +49,19 @@ DeviceAllow=/dev/net/tun rw
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo systemctl enable openvpn@openvpn.service
 
-echo Create PIA Configuration File for Split Tunneling
-echo Get the Required Certificates for PIA
-sudo apt-get install unzip -y
+echo "Now enable the openvpn@openvpn.service we just created"
+systemctl enable openvpn@openvpn.service
+
+echo
+echo "Step 3. Create PIA Configuration File for Split Tunneling"
 cd /etc/openvpn
-sudo wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
-sudo unzip openvpn.zip
-
-echo Create Modified PIA Configuration File for Split Tunneling
+wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
+unzip openvpn.zip
+echo
+echo "Step 4. Create Modified PIA Configuration File for Split Tunneling"
+echo "Create the OpenVPN configuration file"
+echo "under /etc/openvpn/openvpn.conf"
 cat > /etc/openvpn/openvpn.conf << EOF
 client
 dev tun
@@ -78,27 +91,51 @@ up /etc/openvpn/iptables.sh
 down /etc/openvpn/update-resolv-conf
 EOF
 
-echo Make OpenVPN Auto Login on Service Start
-echo $piauservar > /etc/openvpn/login.txt
-echo $piapassvar >> /etc/openvpn/login.txt
+echo
+echo "Step 5. Make OpenVPN Auto Login on Service Start"
+# Ask the PIA user for login details
+echo
+echo "Please enter your PIA username and Password"
+read -p 'Username: ' uservar
+read -p 'Password: ' passvar
+echo
+echo $uservar > /etc/openvpn/login.txt
+echo $passvar >> /etc/openvpn/login.txt
+echo Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt
+echo
+echo "Step 6. Configure VPN DNS Servers to Stop DNS Leaks"
+sed -i -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 
-echo Configure VPN DNS Servers to Stop DNS Leaks
-sed -i.bak -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
+
 sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 
-echo Split Tunneling with iptables and Routing Tables
-sudo adduser $username
-sudo adduser vpn
-sudo usermod -aG vpn $username
-sudo usermod -aG $username vpn
-
+echo
+echo "Step 7. Create regular and vpn User"
+echo "Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to"
+read -p 'Username: ' username
+echo "Enter the password to be used for your regular user."
+echo "Then enter the details for the regular user."
+adduser $username
+echo "Enter the details for the vpn user."
+adduser --disabled-login vpn
+echo
+usermod -aG vpn $username
+echo Thank you, $username added to vpn group.
+echo
+usermod -aG $username vpn
+echo Thank you. vpn user added to $username group.
+echo
 echo Get Routing Information for the iptables Script
+echo
+echo "We need the local IP and the name of the network interface."
+echo "Again, make sure you are using a static IP on your machine or reserved DHCP also known as static DHCP, but configured on your router!"
 interface=$(ip route list | grep default | cut -f5 -d" ")
 localipaddr=$(ip route get 8.8.8.8 | awk '{print $NF; exit}')
 echo
 echo Local Default interface is $interface
 echo Local IP Address is $localipaddr
+
 while true; do
     read -p "Are listed IP Addr and Interface correct?" yn
     case $yn in
@@ -107,6 +144,7 @@ while true; do
         * ) echo "Please answer yes or no.";;
     esac
 done
+
 if [ "$corrections" == 1 ]; then
 	echo Your current route list:
 	ip route list
@@ -114,11 +152,22 @@ if [ "$corrections" == 1 ]; then
 	read -p 'Please enter correct defailt interface: ' interface
 	read -p 'Please enter correct IP Address: ' localipaddr
 fi
-sudo iptables -F
-sudo iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP
-sudo apt-get install iptables-persistent -y
 
-echo iptables Script for vpn User
+echo
+echo "Flush current iptables rules"
+iptables -F
+iptables -X
+echo "Add rule, which will block vpn user’s access to Internet (except the loopback device)."
+iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP
+echo "Install iptables-persistent to save this single rule that will be always applied on each system start."
+echo
+echo "During the install, iptables-persistent will ask you to save current iptables rules to /etc/iptables/rules.v4, accept this with YES."
+echo
+apt-get install iptables-persistent -y
+
+echo
+echo "Step 8. iptables Script for vpn User"
+
 cat > /etc/openvpn/iptables.sh << EOF
 #! /bin/bash
 # Niftiest Software – www.niftiestsoftware.com
@@ -163,9 +212,13 @@ iptables -A OUTPUT ! --src $LOCALIP -o $NETIF -j REJECT
 
 exit 0
 EOF
+
+#Make the iptables script executable
 chmod +x /etc/openvpn/iptables.sh
 
-echo Routing Rules Script for the Marked Packets
+echo
+echo "Step 9. Routing Rules Script for the Marked Packets"
+
 cat > /etc/openvpn/routing.sh << EOF
 #! /bin/bash
 # Niftiest Software – www.niftiestsoftware.com
@@ -186,19 +239,21 @@ ip route flush cache
 
 exit 0
 EOF
+
+# Finally, make the script executable
 chmod +x /etc/openvpn/routing.sh
 
-echo Configure Split Tunnel VPN Routing
+echo
+echo "Step 10. Configure Split Tunnel VPN Routing"
 echo "200     vpn" >> /etc/iproute2/rt_tables
 
-
+echo
 echo "Step 11. Change Reverse Path Filtering"
 echo "net.ipv4.conf.all.rp_filter = 2" > /etc/sysctl.d/9999-vpn.conf
 echo "net.ipv4.conf.default.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo "net.ipv4.conf.eth0.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo Apply new sysctl rules
 sysctl --system
-
 
 echo
 echo "Testing the VPN Split Tunnel"
@@ -219,6 +274,7 @@ echo
 echo Check DNS Server
 echo
 sudo -u vpn -i -- cat /etc/resolv.conf
+
 echo
 echo "If outupt is following, everything is ok:
 # Dynamic resolv.conf(5) file for glibc resolver(3) generated by resolvconf(8)
