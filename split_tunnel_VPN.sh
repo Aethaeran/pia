@@ -21,15 +21,15 @@ blue=`tput setaf 4`
 pink=`tput setaf 5`
 cyan=`tput setaf 6`
 devoid=`tput sgr0`
-echo "${red}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
+echo "${yellow}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
 
-echo "${green}Step 1. Install needed Packages"
-echo "${green}Install OpenVPN, iptables and unzip"
+echo "${green}Step 1. Install needed Packages${devoid}"
+echo "${green}Install OpenVPN, iptables and unzip${devoid}"
 
 sudo apt-get update
 sudo apt-get install openvpn unzip iptables resolvconf -y
 echo
-echo "${green}Step 2. Create systemd Service for OpenVPN"
+echo "${green}Step 2. Create systemd Service for OpenVPN${devoid}"
 sudo cat > /etc/systemd/system/openvpn@openvpn.service << EOF
 [Unit]
 # HTPC Guides - www.htpcguides.com
@@ -59,18 +59,18 @@ DeviceAllow=/dev/net/tun rw
 WantedBy=multi-user.target
 EOF
 
-echo "${green}Now enable the openvpn@openvpn.service we just created"
+echo "${green}Now enable the openvpn@openvpn.service we just created${devoid}"
 sudo systemctl enable openvpn@openvpn.service
 
 echo
-echo "${green}Step 3. Create PIA Configuration File for Split Tunneling"
+echo "${green}Step 3. Create PIA Configuration File for Split Tunneling${devoid}"
 cd /etc/openvpn
 sudo wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
 sudo unzip openvpn.zip
 echo
-echo "${green}Step 4. Create Modified PIA Configuration File for Split Tunneling"
-echo "${green}Create the OpenVPN configuration file"
-echo "${green}under /etc/openvpn/openvpn.conf"
+echo "${green}Step 4. Create Modified PIA Configuration File for Split Tunneling${devoid}"
+echo "${green}Create the OpenVPN configuration file${devoid}"
+echo "${green}under /etc/openvpn/openvpn.conf${devoid}"
 sudo cat > /etc/openvpn/openvpn.conf << EOF
 client
 dev tun
@@ -101,18 +101,18 @@ down /etc/openvpn/update-resolv-conf
 EOF
 
 echo
-echo "${green}Step 5. Make OpenVPN Auto Login on Service Start"
+echo "${green}Step 5. Make OpenVPN Auto Login on Service Start${devoid}"
 # Ask the PIA user for login details
 echo
-echo "${red}Please enter your PIA username and Password"
-read -p '${red}Username: ' uservar
-read -p '${red}Password: ' passvar
+echo "${yellow}Please enter your PIA username and Password${devoid}"
+read -p '${yellow}Username: ' uservar
+read -p '${yellow}Password: ' passvar
 echo
 echo $uservar > /etc/openvpn/login.txt
 echo $passvar >> /etc/openvpn/login.txt
 echo Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt
 echo
-echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks"
+echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
 sudo sed -i -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 
 sudo sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
@@ -120,24 +120,24 @@ sudo sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign
 sudo sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 
 echo
-echo "${green}Step 7. Create regular and vpn User"
-echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to"
+echo "${green}Step 7. Create regular and vpn User${devoid}"
+echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to${devoid}"
 read -p '${green}Username: ' username
-echo "${red}Enter the details for the regular user."
+echo "${yellow}Enter the details for the regular user.${devoid}"
 sudo adduser $username
-echo "${red}Enter the details for the vpn user."
+echo "${yellow}Enter the details for the vpn user.${devoid}"
 sudo adduser vpn
 echo
 usermod -aG vpn $username
-echo "${green}Thank you, $username added to vpn group."
+echo "${green}Thank you, $username added to vpn group.${devoid}"
 echo
 usermod -aG $username vpn
-echo "${green}Thank you. vpn user added to $username group."
+echo "${green}Thank you. vpn user added to $username group.${devoid}"
 echo
 echo Get Routing Information for the iptables Script
 echo
-echo "${green}We need the local IP and the name of the network interface."
-echo "${green}Again, make sure you are using a static IP on your machine or reserved DHCP also known as static DHCP, but configured on your router!"
+echo "${green}We need the local IP and the name of the network interface.${devoid}"
+echo "${green}Again, make sure you are using a static IP on your machine or reserved DHCP also known as static DHCP, but configured on your router!${devoid}"
 interface=$(ip route list | grep default | cut -f5 -d" ")
 localipaddr=$(ip route get 8.8.8.8 | awk '{print $NF; exit}')
 echo
@@ -162,19 +162,19 @@ if [ "$corrections" == 1 ]; then
 fi
 
 echo
-echo "${green}Flush current iptables rules"
+echo "${green}Flush current iptables rules${devoid}"
 sudo iptables -F
 sudo iptables -X
-echo "${green}Add rule, which will block vpn user’s access to Internet (except the loopback device)."
+echo "${green}Add rule, which will block vpn user’s access to Internet (except the loopback device).${devoid}"
 sudo iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP
-echo "${green}Install iptables-persistent to save this single rule that will be always applied on each system start."
+echo "${green}Install iptables-persistent to save this single rule that will be always applied on each system start.${devoid}"
 echo
-echo "${red}During the install, iptables-persistent will ask you to save current iptables rules to /etc/iptables/rules.v4, accept this with YES."
+echo "${yellow}During the install, iptables-persistent will ask you to save current iptables rules to /etc/iptables/rules.v4, accept this with YES.${devoid}"
 echo
 sudo apt-get install iptables-persistent -y
 
 echo
-echo "${green}Step 8. iptables Script for vpn User"
+echo "${green}Step 8. iptables Script for vpn User${devoid}"
 
 sudo cat > /etc/openvpn/iptables.sh << EOF
 #! /bin/bash
@@ -225,7 +225,7 @@ EOF
 sudo chmod +x /etc/openvpn/iptables.sh
 
 echo
-echo "${green}Step 9. Routing Rules Script for the Marked Packets"
+echo "${green}Step 9. Routing Rules Script for the Marked Packets${devoid}"
 
 sudo cat > /etc/openvpn/routing.sh << EOF
 #! /bin/bash
@@ -252,7 +252,7 @@ EOF
 sudo chmod +x /etc/openvpn/routing.sh
 
 echo
-echo "${green}Step 10. Configure Split Tunnel VPN Routing"
+echo "${green}Step 10. Configure Split Tunnel VPN Routing${devoid}"
 echo "200     vpn" >> /etc/iproute2/rt_tables
 
 echo
@@ -264,31 +264,31 @@ echo Apply new sysctl rules
 sysctl --system
 
 echo
-echo "${green}Testing the VPN Split Tunnel"
+echo "${green}Testing the VPN Split Tunnel${devoid}"
 echo
 sudo systemctl restart openvpn@openvpn.service
 echo
 sudo systemctl status openvpn@openvpn.service
 echo
-echo "${green}Check IP address"
-echo "${green}Regular User"
+echo "${green}Check IP address${devoid}"
+echo "${green}Regular User${devoid}"
 curl ipinfo.io
 echo
-echo "${green}Regular User but poiting at VPN interface"
+echo "${green}Regular User but poiting at VPN interface${devoid}"
 curl --interface tun0 ipinfo.io
 echo
-echo "${green}VPN User"
+echo "${green}VPN User${devoid}"
 sudo -u vpn -i -- curl ipinfo.io
 echo
-echo "${red}If Location and IPs match for the last two, but not the first one - everything is fine."
+echo "${yellow}If Location and IPs match for the last two, but not the first one - everything is fine.${devoid}"
 rem TODO Should also check that the killswitch is working by disabling openvpn and testing curl with VPN user.
 echo
-echo "${green}Check DNS Server"
+echo "${green}Check DNS Server${devoid}"
 echo
 sudo -u vpn -i -- cat /etc/resolv.conf
 
 echo
-echo "${red}If outupt is following, everything is ok:
+echo "${yellow}If outupt is following, everything is ok:
 # Dynamic resolv.conf(5) file for glibc resolver(3) generated by resolvconf(8)
 # DO NOT EDIT THIS FILE BY HAND -- YOUR CHANGES WILL BE OVERWRITTEN
 nameserver 209.222.18.222
