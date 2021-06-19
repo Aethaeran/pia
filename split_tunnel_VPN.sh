@@ -21,13 +21,15 @@ blue=`tput setaf 4`
 pink=`tput setaf 5`
 cyan=`tput setaf 6`
 devoid=`tput sgr0`
-echo "${yellow}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
+
+rem This was just to test if the colours were working.
+rem echo "${red}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
 
 echo "${green}Step 1. Install needed Packages${devoid}"
 echo "${green}Install OpenVPN, iptables and unzip${devoid}"
 
 sudo apt-get update
-sudo apt-get install openvpn unzip iptables resolvconf -y
+sudo apt-get install openvpn unzip iptables -y
 echo
 echo "${green}Step 2. Create systemd Service for OpenVPN${devoid}"
 sudo cat > /etc/systemd/system/openvpn@openvpn.service << EOF
@@ -104,13 +106,13 @@ echo
 echo "${green}Step 5. Make OpenVPN Auto Login on Service Start${devoid}"
 # Ask the PIA user for login details
 echo
-echo "${yellow}Please enter your PIA username and Password${devoid}"
-read -p '${yellow}Username: ' uservar
-read -p '${yellow}Password: ' passvar
+echo "${yellow}Please enter your PIA username and Password"
+read -p 'Username: ' uservar
+read -p 'Password: ' passvar
 echo
 echo $uservar > /etc/openvpn/login.txt
 echo $passvar >> /etc/openvpn/login.txt
-echo Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt
+echo "${green}Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt${devoid}"
 echo
 echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
 sudo sed -i -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
@@ -121,11 +123,11 @@ sudo sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_
 
 echo
 echo "${green}Step 7. Create regular and vpn User${devoid}"
-echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to${devoid}"
-read -p '${green}Username: ' username
-echo "${yellow}Enter the details for the regular user.${devoid}"
+echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to${yellow}"
+read -p 'Username: ' username
+echo "${yellow}Enter the details for the regular user."
 sudo adduser $username
-echo "${yellow}Enter the details for the vpn user.${devoid}"
+echo "${yellow}Enter the details for the vpn user."
 sudo adduser vpn
 echo
 usermod -aG vpn $username
@@ -281,7 +283,7 @@ echo "${green}VPN User${devoid}"
 sudo -u vpn -i -- curl ipinfo.io
 echo
 echo "${yellow}If Location and IPs match for the last two, but not the first one - everything is fine.${devoid}"
-rem TODO Should also check that the killswitch is working by disabling openvpn and testing curl with VPN user.
+echo "${cyan}TODO Should also check that the killswitch is working by disabling openvpn and testing curl with VPN user.${devoid}"
 echo
 echo "${green}Check DNS Server${devoid}"
 echo
