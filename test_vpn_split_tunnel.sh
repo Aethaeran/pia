@@ -6,6 +6,31 @@ blue=`tput setaf 4`
 pink=`tput setaf 5`
 cyan=`tput setaf 6`
 devoid=`tput sgr0`
+
+echo "${green}Check if created and modified files are accurate${devoid}"
+echo
+echo "${green}/etc/systemd/system/openvpn@openvpn.service:${devoid}"
+cat /etc/systemd/system/openvpn@openvpn.service 
+echo
+echo "${green}/etc/openvpn/openvpn.conf:${devoid}"
+cat /etc/openvpn/openvpn.conf 
+echo
+echo "${green}/etc/openvpn/login.txt:${devoid}"
+cat /etc/openvpn/login.txt 
+echo
+echo "${green}/etc/openvpn/update-resolv-conf:${devoid}"
+cat /etc/openvpn/update-resolv-conf
+echo
+echo "${green}/etc/openvpn/iptables.sh:${devoid}"
+cat /etc/openvpn/iptables.sh
+echo
+echo "${green}/etc/openvpn/routing.sh:${devoid}"
+cat /etc/openvpn/routing.sh
+echo
+echo "${green}/etc/iproute2/rt_tables:${devoid}"
+cat /etc/iproute2/rt_tables
+echo 
+
 echo
 echo "${green}Testing the VPN Split Tunnel${devoid}"
 echo "${yellow}Press Q to escape service status${devoid}"
@@ -38,27 +63,3 @@ echo "${yellow}If outupt is following, everything is ok:
 nameserver 209.222.18.222
 nameserver 209.222.18.218
 nameserver 8.8.8.8"
-
-echo "${green}Check if created and modified files are accurate${devoid}"
-echo
-echo "${green}/etc/systemd/system/openvpn@openvpn.service:${devoid}"
-cat /etc/systemd/system/openvpn@openvpn.service 
-echo
-echo "${green}/etc/openvpn/openvpn.conf:${devoid}"
-cat /etc/openvpn/openvpn.conf 
-echo
-echo "${green}/etc/openvpn/login.txt:${devoid}"
-cat /etc/openvpn/login.txt 
-echo
-echo "${green}/etc/openvpn/update-resolv-conf:${devoid}"
-cat /etc/openvpn/update-resolv-conf
-echo
-echo "${green}/etc/openvpn/iptables.sh:${devoid}"
-cat /etc/openvpn/iptables.sh
-echo
-echo "${green}/etc/openvpn/routing.sh:${devoid}"
-cat /etc/openvpn/routing.sh
-echo
-echo "${green}/etc/iproute2/rt_tables:${devoid}"
-cat /etc/iproute2/rt_tables
-echo 
