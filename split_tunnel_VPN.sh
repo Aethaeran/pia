@@ -57,34 +57,9 @@ echo
 echo "${green}Step 4. Create Modified PIA Configuration File for Split Tunneling${devoid}"
 echo "${green}Create the OpenVPN configuration file${devoid}"
 echo "${green}under /etc/openvpn/openvpn.conf${devoid}"
-sudo cat > /etc/openvpn/openvpn.conf << EOF
-client
-dev tun
-proto udp
-remote sweden.privacy.network 1198
-resolv-retry infinite
-nobind
-persist-key
-persist-tun
-cipher aes-128-cbc
-auth sha1
-tls-client
-remote-cert-tls server
-auth-user-pass /etc/openvpn/login.txt
-auth-nocache
-comp-lzo
-verb 1
-reneg-sec 0
-crl-verify /etc/openvpn/crl.rsa.2048.pem
-ca /etc/openvpn/ca.rsa.2048.crt
-disable-occ
-script-security 2
-route-noexec
 
-#up and down scripts to be executed when VPN starts or stops
-up /etc/openvpn/iptables.sh
-down /etc/openvpn/update-resolv-conf
-EOF
+cd /etc/openvpn/
+wget https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn.conf
 
 echo
 echo "${green}Step 5. Make OpenVPN Auto Login on Service Start${devoid}"
@@ -100,37 +75,12 @@ echo "${green}Thank you. You now have your PIA login details saved in /etc/openv
 echo
 
 echo "${green}Step 2. Create systemd Service for OpenVPN${devoid}"
-sudo cat > /etc/systemd/system/openvpn@openvpn.service << EOF
-[Unit]
-# HTPC Guides - www.htpcguides.com
-Description=OpenVPN connection to %i
-Documentation=man:openvpn(8)
-Documentation=https://community.openvpn.net/openvpn/wiki/Openvpn23ManPage
-Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
-After=network.target
-
-[Service]
-RuntimeDirectory=openvpn
-PrivateTmp=true
-KillMode=mixed
-Type=forking
-ExecStart=/usr/sbin/openvpn --daemon ovpn-%i --status /run/openvpn/%i.status 10 --cd /etc/openvpn --script-security 2 --config /etc/openvpn/%i.conf --writepid /run/openvpn/%i.pid
-PIDFile=/run/openvpn/%i.pid
-ExecReload=/bin/kill -HUP $MAINPID
-WorkingDirectory=/etc/openvpn
-Restart=on-failure
-RestartSec=3
-ProtectSystem=yes
-LimitNPROC=10
-DeviceAllow=/dev/null rw
-DeviceAllow=/dev/net/tun rw
-
-[Install]
-WantedBy=multi-user.target
-EOF
+cd /etc/systemd/system/
+wget https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn%40openvpn.service
 
 echo "${green}Now enable the openvpn@openvpn.service we just created${devoid}"
 sudo systemctl enable openvpn@openvpn.service
+
 
 echo
 echo "${green}Step 8. iptables Script for vpn User${devoid}"
@@ -164,51 +114,11 @@ if [ "$corrections" == 1 ]; then
 	read -p 'Please enter correct IP Address: ' localipaddr
 	echo "${devoid}"
 fi
+cd /etc/openvpn/
+wget https://raw.githubusercontent.com/Aethaeran/pia/master/iptables.sh
 
-sudo cat > /etc/openvpn/iptables.sh << EOF
-#! /bin/bash
-# Niftiest Software – www.niftiestsoftware.com
-# Modified version by HTPC Guides – www.htpcguides.com
-
-export INTERFACE="tun0"
-export VPNUSER="vpn"
-export LOCALIP="$localipaddr"
-export NETIF="$interface"
-
-# flushes all the iptables rules, if you have other rules to use then add them into the script
-iptables -F -t nat
-iptables -F -t mangle
-iptables -F -t filter
-
-# mark packets from $VPNUSER
-iptables -t mangle -A OUTPUT -j CONNMARK --restore-mark
-iptables -t mangle -A OUTPUT ! --dest $LOCALIP -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
-iptables -t mangle -A OUTPUT --dest $LOCALIP -p udp --dport 53 -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
-iptables -t mangle -A OUTPUT --dest $LOCALIP -p tcp --dport 53 -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
-iptables -t mangle -A OUTPUT ! --src $LOCALIP -j MARK --set-mark 0x1
-iptables -t mangle -A OUTPUT -j CONNMARK --save-mark
-
-# allow responses
-iptables -A INPUT -i $INTERFACE -m conntrack --ctstate ESTABLISHED -j ACCEPT
-
-# block everything incoming on $INTERFACE to prevent accidental exposing of ports
-iptables -A INPUT -i $INTERFACE -j REJECT
-
-# let $VPNUSER access lo and $INTERFACE
-iptables -A OUTPUT -o lo -m owner --uid-owner $VPNUSER -j ACCEPT
-iptables -A OUTPUT -o $INTERFACE -m owner --uid-owner $VPNUSER -j ACCEPT
-
-# all packets on $INTERFACE needs to be masqueraded
-iptables -t nat -A POSTROUTING -o $INTERFACE -j MASQUERADE
-
-# reject connections from predator IP going over $NETIF
-iptables -A OUTPUT ! --src $LOCALIP -o $NETIF -j REJECT
-
-# Start routing script
-/etc/openvpn/routing.sh
-
-exit 0
-EOF
+sudo sed -i.backup -e "s/export LOCALIP=\"192.168.1.110\"/export LOCALIP=\"${localipaddr}\"/g" iptables.sh
+sudo sed -i -e "s/export NETIF=\"eth0\"/export NETIF=\"${interface}\"/g" iptables.sh
 
 #Make the iptables script executable
 sudo chmod +x /etc/openvpn/iptables.sh
@@ -216,26 +126,8 @@ sudo chmod +x /etc/openvpn/iptables.sh
 echo
 echo "${green}Step 9. Routing Rules Script for the Marked Packets${devoid}"
 
-sudo cat > /etc/openvpn/routing.sh << EOF
-#! /bin/bash
-# Niftiest Software – www.niftiestsoftware.com
-# Modified version by HTPC Guides – www.htpcguides.com
-
-VPNIF="tun0"
-VPNUSER="vpn"
-GATEWAYIP=$(ifconfig $VPNIF | egrep -o '([0-9]{1,3}\.){3}[0-9]{1,3}' | egrep -v '255|(127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})' | tail -n1)
-if [[ `ip rule list | grep -c 0x1` == 0 ]]; then
-ip rule add from all fwmark 0x1 lookup $VPNUSER
-fi
-ip route replace default via $GATEWAYIP table $VPNUSER
-ip route append default via 127.0.0.1 dev lo table $VPNUSER
-ip route flush cache
-
-# run update-resolv-conf script to set VPN DNS
-/etc/openvpn/update-resolv-conf
-
-exit 0
-EOF
+cd /etc/openvpn/
+wget https://raw.githubusercontent.com/Aethaeran/pia/master/routing.sh
 
 # Finally, make the script executable
 sudo chmod +x /etc/openvpn/routing.sh
@@ -251,6 +143,14 @@ echo "net.ipv4.conf.default.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo "net.ipv4.conf.eth0.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo Apply new sysctl rules
 sysctl --system
+
+
+echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
+sudo sed -i.backup -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
+sudo sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
+sudo sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
+echo
+
 
 sudo systemctl start openvpn@openvpn
 
