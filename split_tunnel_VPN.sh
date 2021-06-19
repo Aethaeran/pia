@@ -32,7 +32,6 @@ sudo apt-get update
 sudo apt-get install openvpn iptables unzip  -y
 echo
 
-
 echo "${green}Step 7. Create regular and vpn User${devoid}"
 echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to${yellow}"
 read -p 'Username: ' username

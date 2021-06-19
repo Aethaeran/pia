@@ -31,6 +31,24 @@ echo "${green}/etc/iproute2/rt_tables:${devoid}"
 cat /etc/iproute2/rt_tables
 echo 
 
+echo "${green}Testing if created shell scripts are executable${devoid}"
+file=/etc/openvpn/iptables.sh
+if [[ -x "$file" ]]
+then
+    echo "File '$file' is executable"
+else
+    echo "File '$file' is not executable or found"
+fi
+
+file=/etc/openvpn/routing.sh
+if [[ -x "$file" ]]
+then
+    echo "File '$file' is executable"
+else
+    echo "File '$file' is not executable or found"
+fi
+
+
 echo
 echo "${green}Testing the VPN Split Tunnel${devoid}"
 echo "${yellow}Press Q to escape service status${devoid}"
