@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# By Georgiy Sitnikov.
+# By Georgiy Sitnikov. Modified by Aethaeran
 #
 # Will do setup Split Tunnel. More under:
 # https://gist.github.com/GAS85/4e40ece16ffa748e7138b9aa4c37ca52
 #
 # AS-IS without any warranty
 
-# Check if you are root user, otherwise will not work
+echo "Checking if you are root user, otherwise the script will not work."
 [[ $(id -u) -eq 0 ]] || { echo >&2 "Must be root to run this script."; exit 1; }
 
-# Optinally
+# TODO (Might be needed for 16.04)
 #wget https://swupdate.openvpn.net/repos/repo-public.gpg -O - | apt-key add -
 #echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" | tee -a /etc/apt/sources.list.d/openvpn.list
 
@@ -22,8 +22,9 @@ pink=`tput setaf 5`
 cyan=`tput setaf 6`
 devoid=`tput sgr0`
 
-rem This was just to test if the colours were working.
-rem echo "${red}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
+# TODO Remove this test?
+# This was just to test if the colours were working.
+# echo "${red}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
 
 echo "${green}Step 1. Install needed Packages${devoid}"
 echo "${green}Install OpenVPN, iptables and unzip${devoid}"
@@ -32,37 +33,22 @@ sudo apt-get update
 sudo apt-get install openvpn iptables unzip  -y
 echo
 
-echo "${green}Step 7. Create regular and vpn User${devoid}"
-echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to${yellow}"
+echo "${green}Step 2. Create regular and vpn User${devoid}"
+echo "${green}Enter your REGULAR username, will also be used as group name of your regular user that you would like to add the vpn user to${yellow}"
 read -p 'Username: ' username
-echo "${yellow}Enter the details for the regular user."
+echo "Enter the details for the REGULAR user."
 sudo adduser $username
-echo "${yellow}Enter the details for the vpn user."
-sudo adduser --disabled-login vpn
+echo "Enter the details for the VPN user."
+sudo adduser vpn
 echo
 usermod -aG vpn $username
-echo "${green}Thank you, $username added to vpn group.${devoid}"
+echo "${green}$username added to vpn group.${devoid}"
 echo
 usermod -aG $username vpn
-echo "${green}Thank you. vpn user added to $username group.${devoid}"
+echo "${green}vpn user added to $username group.${devoid}"
 echo
 
-echo
-echo "${green}Step 3. Create PIA Configuration File for Split Tunneling${devoid}"
-cd /etc/openvpn
-sudo wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
-sudo unzip openvpn.zip
-echo
-
-echo "${green}Step 4. Create Modified PIA Configuration File for Split Tunneling${devoid}"
-echo "${green}Create the OpenVPN configuration file${devoid}"
-echo "${green}under /etc/openvpn/openvpn.conf${devoid}"
-
-cd /etc/openvpn/
-wget https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn.conf
-
-echo
-echo "${green}Step 5. Make OpenVPN Auto Login on Service Start${devoid}"
+echo "${green}Step 3. Make OpenVPN Auto Login on Service Start${devoid}"
 # Ask the PIA user for login details
 echo
 echo "${yellow}Please enter your PIA username and Password"
@@ -74,23 +60,35 @@ echo $passvar >> /etc/openvpn/login.txt
 echo "${green}Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt${devoid}"
 echo
 
-echo "${green}Step 2. Create systemd Service for OpenVPN${devoid}"
+echo "${green}Step 4. Create PIA Configuration File for Split Tunneling${devoid}"
+cd /etc/openvpn
+sudo wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
+sudo unzip openvpn.zip
+echo
+
+echo "${green}Step 4. Create Modified PIA Configuration File for Split Tunneling${devoid}"
+echo "${green}Create the OpenVPN configuration file${devoid}"
+echo "${green}under /etc/openvpn/openvpn.conf${devoid}"
+
+cd /etc/openvpn/
+wget https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn.conf
+echo
+
+echo "${green}Step 5. Create systemd Service for OpenVPN${devoid}"
 cd /etc/systemd/system/
 wget https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn%40openvpn.service
 
 echo "${green}Now enable the openvpn@openvpn.service we just created${devoid}"
 sudo systemctl enable openvpn@openvpn.service
-
-
 echo
-echo "${green}Step 8. iptables Script for vpn User${devoid}"
 
+echo "${green}Step 8. iptables Script for vpn User${devoid}"
 echo "${green}Get Routing Information for the iptables Script${devoid}"
 echo
 echo "${green}We need the local IP and the name of the network interface.${devoid}"
 echo "${green}Again, make sure you are using a static IP on your machine or reserved DHCP also known as static DHCP, but configured on your router!${devoid}"
 interface=$(ip route list | grep default | cut -f5 -d" ")
-localipaddr=$(ip route get 8.8.8.8 | awk '{print $NF; exit}')
+localipaddr=$(curl api.ipify.org -s)
 echo
 echo Local Default interface is $interface
 echo Local IP Address is $localipaddr
