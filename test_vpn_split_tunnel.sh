@@ -59,13 +59,13 @@ sudo systemctl status openvpn@openvpn.service
 echo
 echo "${green}Check IP address${devoid}"
 echo "${green}Regular User${devoid}"
-curl ipinfo.io
+curl api.ipify.org
 echo
-echo "${green}Regular User but poiting at VPN interface${devoid}"
-curl --interface tun0 ipinfo.io
+echo "${green}Regular User but through the VPN interface${devoid}"
+curl --interface tun0 api.ipify.org
 echo
 echo "${green}VPN User${devoid}"
-sudo -u vpn -i -- curl ipinfo.io
+sudo -u vpn -i -- curl api.ipify.org
 echo
 echo "${yellow}If Location and IPs match for the last two, but not the first one - everything is fine.${devoid}"
 echo "${cyan}TODO Should also check that the killswitch is working by disabling openvpn and testing curl with VPN user.${devoid}"
