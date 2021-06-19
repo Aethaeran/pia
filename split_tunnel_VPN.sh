@@ -52,12 +52,12 @@ EOF
 
 echo "Now enable the openvpn@openvpn.service we just created"
 systemctl enable openvpn@openvpn.service
+
 echo
 echo "Step 3. Create PIA Configuration File for Split Tunneling"
-cd /tmp
+cd /etc/openvpn
 wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
 unzip openvpn.zip
-cp crl.rsa.2048.pem ca.rsa.2048.crt /etc/openvpn/
 echo
 echo "Step 4. Create Modified PIA Configuration File for Split Tunneling"
 echo "Create the OpenVPN configuration file"
@@ -66,10 +66,7 @@ cat > /etc/openvpn/openvpn.conf << EOF
 client
 dev tun
 proto udp
-remote czech.privateinternetaccess.com 1198
-remote sweden.privateinternetaccess.com 1198
-remote nl.privateinternetaccess.com 1198
-remote-random
+remote sweden.privacy.network 1198
 resolv-retry infinite
 nobind
 persist-key
@@ -115,18 +112,16 @@ sed -i -e "s/# foreign_option_3=\'dhcp-option DOMAIN be.bnc.ch\'/foreign_option_
 
 echo
 echo "Step 7. Create vpn User"
+echo "Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to"
+read -p 'Username: ' username
+adduser $username
 adduser --disabled-login vpn
 echo
-echo "Enter username with the user you would like to add to the vpn group"
-echo "E.g. your regular user: $(grep 1000 /etc/passwd | cut -f1 -d:)"
-read -p 'Username: ' username
 usermod -aG vpn $username
-echo Thanks you, $username added to VPN group.
+echo Thank you, $username added to VPN group.
 echo
-echo Group name of your regular user that you would like to add the vpn user to
-read -p 'Group: ' groupname
-usermod -aG $groupname vpn
-echo Thanks you.
+usermod -aG $username vpn
+echo Thank you.
 echo
 echo Get Routing Information for the iptables Script
 echo
