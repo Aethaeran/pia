@@ -263,6 +263,7 @@ sysctl --system
 
 echo
 echo "Testing the VPN Split Tunnel"
+systemctl start openvpn@openvpn.service
 echo
 systemctl status openvpn@openvpn.service
 echo
