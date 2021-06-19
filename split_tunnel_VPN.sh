@@ -151,9 +151,6 @@ sudo sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign
 sudo sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 echo
 
-
-
-echo
 echo "${green}Flush current iptables rules${devoid}"
 sudo iptables -F
 sudo iptables -X
@@ -165,7 +162,7 @@ echo "${yellow}During the install, iptables-persistent will ask you to save curr
 echo
 sudo apt-get install iptables-persistent -y
 
-
+echo "${green}Starting openvpn service.${devoid}"
 sudo systemctl start openvpn@openvpn
 
 exit 0
