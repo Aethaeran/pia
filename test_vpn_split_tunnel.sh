@@ -63,7 +63,7 @@ sudo -u vpn -i -- curl api.ipify.org
 echo
 echo "${green}VPN User but with VPN disabled${devoid}"
 systemctl stop openvpn@openvpn
-sudo -u vpn -i -- curl api.ipify.org
+sudo -u vpn -i -- curl api.ipify.org -m 5
 systemctl start openvpn@openvpn
 echo
 echo "${yellow}If Location and IPs match for the last two, but not the first one - everything is fine.${devoid}"
