@@ -14,14 +14,23 @@
 #wget https://swupdate.openvpn.net/repos/repo-public.gpg -O - | apt-key add -
 #echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" | tee -a /etc/apt/sources.list.d/openvpn.list
 
+red=`tput setaf 1`
+green=`tput setaf 2`
+yellow=`tput setaf 3`
+blue=`tput setaf 4`
+pink=`tput setaf 5`
+cyan=`tput setaf 6`
+reset=`tput sgr0`
+echo "${red}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
+
 echo "${green}Step 1. Install needed Packages"
 echo "${green}Install OpenVPN, iptables and unzip"
 
-apt-get update
-apt-get install openvpn unzip iptables -y
+sudo apt-get update
+sudo apt-get install openvpn unzip iptables resolvconf -y
 echo
 echo "${green}Step 2. Create systemd Service for OpenVPN"
-cat > /etc/systemd/system/openvpn@openvpn.service << EOF
+sudo cat > /etc/systemd/system/openvpn@openvpn.service << EOF
 [Unit]
 # HTPC Guides - www.htpcguides.com
 Description=OpenVPN connection to %i
@@ -51,18 +60,18 @@ WantedBy=multi-user.target
 EOF
 
 echo "${green}Now enable the openvpn@openvpn.service we just created"
-systemctl enable openvpn@openvpn.service
+sudo systemctl enable openvpn@openvpn.service
 
 echo
 echo "${green}Step 3. Create PIA Configuration File for Split Tunneling"
 cd /etc/openvpn
-wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
-unzip openvpn.zip
+sudo wget https://www.privateinternetaccess.com/openvpn/openvpn.zip
+sudo unzip openvpn.zip
 echo
 echo "${green}Step 4. Create Modified PIA Configuration File for Split Tunneling"
 echo "${green}Create the OpenVPN configuration file"
 echo "${green}under /etc/openvpn/openvpn.conf"
-cat > /etc/openvpn/openvpn.conf << EOF
+sudo cat > /etc/openvpn/openvpn.conf << EOF
 client
 dev tun
 proto udp
@@ -95,29 +104,29 @@ echo
 echo "${green}Step 5. Make OpenVPN Auto Login on Service Start"
 # Ask the PIA user for login details
 echo
-echo "${yellow}Please enter your PIA username and Password"
-read -p '${yellow}Username: ' uservar
-read -p '${yellow}Password: ' passvar
+echo "${red}Please enter your PIA username and Password"
+read -p '${red}Username: ' uservar
+read -p '${red}Password: ' passvar
 echo
 echo $uservar > /etc/openvpn/login.txt
 echo $passvar >> /etc/openvpn/login.txt
 echo Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt
 echo
 echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks"
-sed -i -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
+sudo sed -i -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 
-sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
+sudo sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
 
-sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
+sudo sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 
 echo
 echo "${green}Step 7. Create regular and vpn User"
 echo "${green}Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to"
 read -p '${green}Username: ' username
-echo "${yellow}Enter the details for the regular user."
-adduser $username
-echo "${yellow}Enter the details for the vpn user."
-adduser vpn
+echo "${red}Enter the details for the regular user."
+sudo adduser $username
+echo "${red}Enter the details for the vpn user."
+sudo adduser vpn
 echo
 usermod -aG vpn $username
 echo "${green}Thank you, $username added to vpn group."
@@ -154,20 +163,20 @@ fi
 
 echo
 echo "${green}Flush current iptables rules"
-iptables -F
-iptables -X
+sudo iptables -F
+sudo iptables -X
 echo "${green}Add rule, which will block vpn user’s access to Internet (except the loopback device)."
-iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP
+sudo iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP
 echo "${green}Install iptables-persistent to save this single rule that will be always applied on each system start."
 echo
-echo "${yellow}During the install, iptables-persistent will ask you to save current iptables rules to /etc/iptables/rules.v4, accept this with YES."
+echo "${red}During the install, iptables-persistent will ask you to save current iptables rules to /etc/iptables/rules.v4, accept this with YES."
 echo
-apt-get install iptables-persistent -y
+sudo apt-get install iptables-persistent -y
 
 echo
 echo "${green}Step 8. iptables Script for vpn User"
 
-cat > /etc/openvpn/iptables.sh << EOF
+sudo cat > /etc/openvpn/iptables.sh << EOF
 #! /bin/bash
 # Niftiest Software – www.niftiestsoftware.com
 # Modified version by HTPC Guides – www.htpcguides.com
@@ -218,7 +227,7 @@ sudo chmod +x /etc/openvpn/iptables.sh
 echo
 echo "${green}Step 9. Routing Rules Script for the Marked Packets"
 
-cat > /etc/openvpn/routing.sh << EOF
+sudo cat > /etc/openvpn/routing.sh << EOF
 #! /bin/bash
 # Niftiest Software – www.niftiestsoftware.com
 # Modified version by HTPC Guides – www.htpcguides.com
@@ -240,7 +249,7 @@ exit 0
 EOF
 
 # Finally, make the script executable
-chmod +x /etc/openvpn/routing.sh
+sudo chmod +x /etc/openvpn/routing.sh
 
 echo
 echo "${green}Step 10. Configure Split Tunnel VPN Routing"
@@ -257,9 +266,9 @@ sysctl --system
 echo
 echo "${green}Testing the VPN Split Tunnel"
 echo
-systemctl start openvpn@openvpn.service
+sudo systemctl restart openvpn@openvpn.service
 echo
-systemctl status openvpn@openvpn.service
+sudo systemctl status openvpn@openvpn.service
 echo
 echo "${green}Check IP address"
 echo "${green}Regular User"
@@ -271,7 +280,7 @@ echo
 echo "${green}VPN User"
 sudo -u vpn -i -- curl ipinfo.io
 echo
-echo "${yellow}If Location and IPs match for the last two, but not the first one - everything is fine."
+echo "${red}If Location and IPs match for the last two, but not the first one - everything is fine."
 rem TODO Should also check that the killswitch is working by disabling openvpn and testing curl with VPN user.
 echo
 echo "${green}Check DNS Server"
@@ -279,7 +288,7 @@ echo
 sudo -u vpn -i -- cat /etc/resolv.conf
 
 echo
-echo "${yellow}If outupt is following, everything is ok:
+echo "${red}If outupt is following, everything is ok:
 # Dynamic resolv.conf(5) file for glibc resolver(3) generated by resolvconf(8)
 # DO NOT EDIT THIS FILE BY HAND -- YOUR CHANGES WILL BE OVERWRITTEN
 nameserver 209.222.18.222
