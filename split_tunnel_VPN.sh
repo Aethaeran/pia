@@ -23,7 +23,7 @@ echo
 echo "Step 2. Create systemd Service for OpenVPN"
 cat > /etc/systemd/system/openvpn@openvpn.service << EOF
 [Unit]
-# https://gist.github.com/GAS85/4e40ece16ffa748e7138b9aa4c37ca52
+# HTPC Guides - www.htpcguides.com
 Description=OpenVPN connection to %i
 Documentation=man:openvpn(8)
 Documentation=https://community.openvpn.net/openvpn/wiki/Openvpn23ManPage
@@ -101,27 +101,30 @@ read -p 'Password: ' passvar
 echo
 echo $uservar > /etc/openvpn/login.txt
 echo $passvar >> /etc/openvpn/login.txt
-echo Thanks you $uservar we now have your PIA login details saved in /etc/openvpn/login.txt
+echo Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt
 echo
 echo "Step 6. Configure VPN DNS Servers to Stop DNS Leaks"
-sed -i -e "s/# foreign_option_1=\'dhcp-option DNS 193.43.27.132\'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
+sed -i -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 
-sed -i -e "s/# foreign_option_2=\'dhcp-option DNS 193.43.27.133\'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
+sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
 
-sed -i -e "s/# foreign_option_3=\'dhcp-option DOMAIN be.bnc.ch\'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
+sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 
 echo
-echo "Step 7. Create vpn User"
+echo "Step 7. Create regular and vpn User"
 echo "Enter your regular username, will also be used as group name of your regular user that you would like to add the vpn user to"
 read -p 'Username: ' username
+echo "Enter the password to be used for your regular user."
+echo "Then enter the details for the regular user."
 adduser $username
+echo "Enter the details for the vpn user."
 adduser --disabled-login vpn
 echo
 usermod -aG vpn $username
-echo Thank you, $username added to VPN group.
+echo Thank you, $username added to vpn group.
 echo
 usermod -aG $username vpn
-echo Thank you.
+echo Thank you. vpn user added to $username group.
 echo
 echo Get Routing Information for the iptables Script
 echo
@@ -143,7 +146,9 @@ while true; do
 done
 
 if [ "$corrections" == 1 ]; then
+	echo Your current route list:
 	ip route list
+	echo
 	read -p 'Please enter correct defailt interface: ' interface
 	read -p 'Please enter correct IP Address: ' localipaddr
 fi
@@ -178,40 +183,29 @@ iptables -F -t nat
 iptables -F -t mangle
 iptables -F -t filter
 
-# mark packets from \$VPNUSER
+# mark packets from $VPNUSER
 iptables -t mangle -A OUTPUT -j CONNMARK --restore-mark
-iptables -t mangle -A OUTPUT ! --dest \$LOCALIP -m owner --uid-owner \$VPNUSER -j MARK --set-mark 0x1
-iptables -t mangle -A OUTPUT --dest \$LOCALIP -p udp --dport 53 -m owner --uid-owner \$VPNUSER -j MARK --set-mark 0x1
-iptables -t mangle -A OUTPUT --dest \$LOCALIP -p tcp --dport 53 -m owner --uid-owner \$VPNUSER -j MARK --set-mark 0x1
-# Added Local Open Ports Like Aria2 RPC, Torrent GUI
-iptables -t mangle -A OUTPUT --src \$LOCALIP -p tcp -m tcp -m multiport --sports 6800,7777 -m owner --uid-owner \$VPNUSER -j MARK --set-mark 0x0
-# Continue marking
-iptables -t mangle -A OUTPUT ! --src \$LOCALIP -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT ! --dest $LOCALIP -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT --dest $LOCALIP -p udp --dport 53 -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT --dest $LOCALIP -p tcp --dport 53 -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT ! --src $LOCALIP -j MARK --set-mark 0x1
 iptables -t mangle -A OUTPUT -j CONNMARK --save-mark
 
 # allow responses
-iptables -A INPUT -i \$INTERFACE -m conntrack --ctstate ESTABLISHED -j ACCEPT
+iptables -A INPUT -i $INTERFACE -m conntrack --ctstate ESTABLISHED -j ACCEPT
 
-# block everything incoming on \$INTERFACE to prevent accidental exposing of ports
-iptables -A INPUT -i \$INTERFACE -j REJECT
+# block everything incoming on $INTERFACE to prevent accidental exposing of ports
+iptables -A INPUT -i $INTERFACE -j REJECT
 
-# let \$VPNUSER access lo and \$INTERFACE
-iptables -A OUTPUT -o lo -m owner --uid-owner \$VPNUSER -j ACCEPT
-iptables -A OUTPUT -o \$INTERFACE -m owner --uid-owner \$VPNUSER -j ACCEPT
+# let $VPNUSER access lo and $INTERFACE
+iptables -A OUTPUT -o lo -m owner --uid-owner $VPNUSER -j ACCEPT
+iptables -A OUTPUT -o $INTERFACE -m owner --uid-owner $VPNUSER -j ACCEPT
 
-# all packets on \$INTERFACE needs to be masqueraded
-iptables -t nat -A POSTROUTING -o \$INTERFACE -j MASQUERADE
+# all packets on $INTERFACE needs to be masqueraded
+iptables -t nat -A POSTROUTING -o $INTERFACE -j MASQUERADE
 
-# reject connections from predator IP going over \$NETIF
-iptables -A OUTPUT ! --src \$LOCALIP -o \$NETIF -j REJECT
-
-#ADD YOUR RULES HERE
-
-iptables -A INPUT -p tcp -m tcp -m multiport -j ACCEPT --dports 22,80,443
-iptables -A INPUT -p tcp -m tcp -m multiport -m state --state ESTABLISHED,RELATED -j ACCEPT --sports 22,53,80,443,8080,6800,7777
-iptables -A INPUT -s 127.0.0.1/32 -j ACCEPT
-iptables -A INPUT -p tcp -m tcp -s 192.168.0.0/24 --dports 6800,7777 -j ACCEPT
-iptables -A INPUT -j DROP
+# reject connections from predator IP going over $NETIF
+iptables -A OUTPUT ! --src $LOCALIP -o $NETIF -j REJECT
 
 # Start routing script
 /etc/openvpn/routing.sh
@@ -263,6 +257,7 @@ sysctl --system
 
 echo
 echo "Testing the VPN Split Tunnel"
+echo
 systemctl start openvpn@openvpn.service
 echo
 systemctl status openvpn@openvpn.service
