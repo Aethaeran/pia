@@ -143,6 +143,7 @@ while true; do
 done
 
 if [ "$corrections" == 1 ]; then
+	ip route list
 	read -p 'Please enter correct defailt interface: ' interface
 	read -p 'Please enter correct IP Address: ' localipaddr
 fi
