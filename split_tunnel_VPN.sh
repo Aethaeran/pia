@@ -2,8 +2,7 @@
 
 # By Georgiy Sitnikov. Modified by Aethaeran
 #
-# Will do setup Split Tunnel. More under:
-# https://gist.github.com/GAS85/4e40ece16ffa748e7138b9aa4c37ca52
+# Will setup a Split Tunnel user.
 #
 # AS-IS without any warranty
 
@@ -21,10 +20,6 @@ blue=`tput setaf 4`
 pink=`tput setaf 5`
 cyan=`tput setaf 6`
 devoid=`tput sgr0`
-
-# TODO Remove this test?
-# This was just to test if the colours were working.
-# echo "${red}red text ${green}green text ${yellow}yellow text ${blue}blue text ${pink}pink text ${cyan}cyan text ${reset}"
 
 echo "${green}Step 1. Install needed Packages${devoid}"
 echo "${green}Install OpenVPN, iptables and unzip${devoid}"
@@ -57,6 +52,8 @@ read -p 'Password: ' passvar
 echo
 echo $uservar > /etc/openvpn/login.txt
 echo $passvar >> /etc/openvpn/login.txt
+sudo chmod 700 /etc/openvpn/login.txt
+sudo chmod -x /etc/openvpn/login.txt
 echo "${green}Thank you. You now have your PIA login details saved in /etc/openvpn/login.txt${devoid}"
 echo
 
@@ -130,18 +127,16 @@ wget https://raw.githubusercontent.com/Aethaeran/pia/master/routing.sh
 # Finally, make the script executable
 sudo chmod +x /etc/openvpn/routing.sh
 
-echo
 echo "${green}Step 10. Configure Split Tunnel VPN Routing${devoid}"
 echo "200     vpn" >> /etc/iproute2/rt_tables
-
 echo
+
 echo "Step 11. Change Reverse Path Filtering"
 echo "net.ipv4.conf.all.rp_filter = 2" > /etc/sysctl.d/9999-vpn.conf
 echo "net.ipv4.conf.default.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo "net.ipv4.conf.eth0.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo Apply new sysctl rules
 sysctl --system
-
 
 echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
 sudo sed -i.backup -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
