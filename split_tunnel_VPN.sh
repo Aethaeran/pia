@@ -86,6 +86,11 @@ echo "${green}Again, make sure you are using a static IP on your machine or rese
 interface=$(ip route list | grep default | cut -f5 -d" ")
 localipaddr=$(curl api.ipify.org -s)
 echo
+echo Your current route list:
+echo "${pink}"
+ip route list
+echo "${yellow}"
+echo
 echo Local Default interface is $interface
 echo Local IP Address is $localipaddr
 while true; do
@@ -99,11 +104,6 @@ while true; do
     esac
 done
 if [ "$corrections" == 1 ]; then
-	echo Your current route list:
-	echo "${pink}"
-	ip route list
-	echo "${yellow}"
-	echo
 	read -p 'Please enter correct defailt interface: ' interface
 	read -p 'Please enter correct IP Address: ' localipaddr
 	echo "${devoid}"
