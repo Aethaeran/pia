@@ -137,12 +137,14 @@ echo "net.ipv4.conf.eth0.rp_filter = 2" >> /etc/sysctl.d/9999-vpn.conf
 echo Apply new sysctl rules
 sysctl --system
 
-echo "${green}Step 6. Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
+echo "${green}Step 12. Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
 sudo sed -i.backup -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" /etc/openvpn/update-resolv-conf
 sudo sed -i -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" /etc/openvpn/update-resolv-conf
 sudo sed -i -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" /etc/openvpn/update-resolv-conf
 echo
 
+
+echo "${green}Step 13. Set persistent iptable rules${devoid}"
 echo "${green}Flush current iptables rules${devoid}"
 sudo iptables -F
 sudo iptables -X
@@ -161,6 +163,7 @@ sudo systemctl start openvpn@openvpn
 # https://www.tecmint.com/set-permanent-dns-nameservers-in-ubuntu-debian/
 # https://phoenixnap.com/kb/crontab-reboot
 
+echo "${green}Step 14. Set Permanent DNS Nameservers in Ubuntu and Debian${devoid}"
 # Set Permanent DNS Nameservers in Ubuntu and Debian
 sudo apt update
 sudo apt install resolvconf
@@ -176,5 +179,14 @@ sudo resolvconf -u
 cd /var/spool/cron/crontabs/
 wget https://raw.githubusercontent.com/Aethaeran/pia/master/root
 echo "@reboot sudo resolvconf -u" >> /var/spool/cron/crontabs/root
+
+echo "${green}Step 14. Disable IPv6 to prevent leaks there.${devoid}"
+# Reference:
+# https://linuxconfig.org/how-to-disable-ipv6-address-on-ubuntu-20-04-lts-focal-fossa
+# This sets it immediately
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+# This sets it on reboot
+sudo sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/GRUB_CMDLINE_LINUX_DEFAULT=\"ipv6.disable=1\"/g' /etc/default/grub
 
 exit 0
