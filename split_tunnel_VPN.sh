@@ -9,8 +9,9 @@
 #
 # AS-IS without any warranty
 
-echo "Checking if you are root user, otherwise the script will not work."
-[[ $(id -u) -eq 0 ]] || { echo >&2 "Must be root to run this script."; exit 1; }
+##########################################################################
+# Variables
+##########################################################################
 
 red=`tput setaf 1`
 green=`tput setaf 2`
@@ -20,16 +21,28 @@ pink=`tput setaf 5`
 cyan=`tput setaf 6`
 devoid=`tput sgr0`
 
+echo "${green}Enter your REGULAR username, will also be used as group name of your regular user that you would like to add the vpn user to${yellow}"
+read -p 'Username: ' username
+
+echo "${yellow}Please enter your PIA username and Password"
+read -p 'Username: ' uservar
+read -p 'Password: ' passvar
+
+##########################################################################
+# Main
+##########################################################################
+
+# "Checking if you are root user, otherwise the script will not work."
+[[ $(id -u) -eq 0 ]] || { echo >&2 "Must be root to run this script. Run 'sudo su -' prior to running this script."; exit 1; }
+
 echo "${green}Step 1. Install needed Packages${devoid}"
 echo "${green}Install OpenVPN, iptables and unzip${devoid}"
 
 sudo apt-get update
 sudo apt-get install openvpn iptables unzip  -y
-echo
 
 echo "${green}Step 2. Create regular and vpn User${devoid}"
-echo "${green}Enter your REGULAR username, will also be used as group name of your regular user that you would like to add the vpn user to${yellow}"
-read -p 'Username: ' username
+
 echo "Enter the details for the REGULAR user."
 sudo adduser $username
 echo "Enter the details for the VPN user."
@@ -45,9 +58,6 @@ echo
 echo "${green}Step 3. Make OpenVPN Auto Login on Service Start${devoid}"
 # Ask the PIA user for login details
 echo
-echo "${yellow}Please enter your PIA username and Password"
-read -p 'Username: ' uservar
-read -p 'Password: ' passvar
 echo
 echo $uservar > /etc/openvpn/login.txt
 echo $passvar >> /etc/openvpn/login.txt
