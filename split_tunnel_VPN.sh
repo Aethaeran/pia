@@ -184,9 +184,10 @@ echo "${green}Step 14. Disable IPv6 to prevent leaks there.${devoid}"
 # Reference:
 # https://linuxconfig.org/how-to-disable-ipv6-address-on-ubuntu-20-04-lts-focal-fossa
 # This sets it immediately
-net.ipv6.conf.all.disable_ipv6 = 1
-net.ipv6.conf.default.disable_ipv6 = 1
+sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sysctl -w net.ipv6.conf.default.disable_ipv6=1
 # This sets it on reboot
 sudo sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/GRUB_CMDLINE_LINUX_DEFAULT=\"ipv6.disable=1\"/g' /etc/default/grub
+sudo update-grub
 
 exit 0
