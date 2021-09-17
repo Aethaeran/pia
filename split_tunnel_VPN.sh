@@ -19,6 +19,7 @@
 # https://linuxconfig.org/how-to-disable-ipv6-address-on-ubuntu-20-04-lts-focal-fossa
 # https://stackoverflow.com/questions/4880290/how-do-i-create-a-crontab-through-a-script
 # TODO: https://pimylifeup.com/ubuntu-disable-ipv6/
+# TODO: https://www.explorelinux.com/how-and-why-to-disable-ipv6-in-ubuntu/
 
 ##########################################################################
 # File created and modified by this script
