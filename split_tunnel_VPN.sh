@@ -92,7 +92,7 @@ EOF
 
 # TODO: Possibly use ENV_VARs to bypass reads
 
-echo "${yellow}Enter your REGULAR username and password:"
+echo "${yellow}Enter your PRIMARY username and password:"
 read -rp 'Username: ' username
 read -rp 'Password: ' password
 
@@ -123,8 +123,7 @@ apt update >>"$log" 2>&1
 apt install openvpn iptables unzip -y >>"$log" 2>&1
 
 echo "${cyan}Step 02.${green} Create users, and add to one another's groups: ${pink}$username $vpn_user${devoid}"
-# TODO: Make this user sudo capable?
-useradd "$username" -m -G www-data -s /bin/bash
+useradd "$username" -m -G sudo -s /bin/bash
 chpasswd <<<"$username:$password"
 useradd "$vpn_user" -m -G www-data -s /bin/bash
 chpasswd <<<"$vpn_user:$password"
@@ -321,7 +320,9 @@ echo "${cyan}Step 14.${green} Disable IPv6 entirely to eliminate IPv6 leaks with
 # This disables IPv6 immediately
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >>"$log" 2>&1
 sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
-# TODO: There was an instance where adding this disabled someone's internet entirely. Alternate method in references should be used.
+
+# TODO: There was an instance where adding this to grub disabled someone's internet entirely. Alternate method in references should be used.
+
 # This disables IPv6 on reboot va grub
 # TODO: Change this to insert after other set variables if they exist.
 sed -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/GRUB_CMDLINE_LINUX_DEFAULT=\"ipv6.disable=1\"/g' -i "/etc/default/grub"
