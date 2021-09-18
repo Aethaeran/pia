@@ -167,9 +167,9 @@ disable-occ
 script-security 2
 route-noexec
 
-#up and down scripts to be executed when VPN starts or stops
+# up and down scripts to be executed when VPN starts or stops
 up /etc/openvpn/iptables.sh
-down /etc/openvpn/update-resolv-conf
+# down /etc/openvpn/update-resolv-conf
 EOF
 
 echo "${cyan}Step 06.${green} Create systemd service: ${pink}/etc/systemd/system/openvpn@openvpn.service${devoid}"
@@ -270,7 +270,7 @@ ip route append default via 127.0.0.1 dev lo table $VPNUSER
 ip route flush cache
 
 # run update-resolv-conf script to set VPN DNS
-/etc/openvpn/update-resolv-conf
+# /etc/openvpn/update-resolv-conf
 
 exit 0
 EOF
@@ -321,8 +321,8 @@ echo "${cyan}Step 14.${green} Disable IPv6 entirely to eliminate IPv6 leaks with
 # This disables IPv6 immediately
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >>"$log" 2>&1
 sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
-# This disables IPv6 on reboot
 # TODO: There was an instance where adding this disabled someone's internet entirely. Alternate method in references should be used.
+# This disables IPv6 on reboot va grub
 # TODO: Change this to insert after other set variables if they exist.
 sed -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/GRUB_CMDLINE_LINUX_DEFAULT=\"ipv6.disable=1\"/g' -i "/etc/default/grub"
 update-grub >>"$log" 2>&1
