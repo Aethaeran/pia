@@ -27,20 +27,22 @@
 
 # /etc/openvpn/login.txt # Contains your PIA login details
 # /etc/openvpn/openvpn.zip # A file containing all of PIA's .ovpn file as well as their .pem and .crt
-# "sweden.ovpn" "crl.rsa.2048.pem" "ca.rsa.2048.crt"
-# openvpn.conf
+# /etc/openvpn/sweden.ovpn
+# /etc/openvpn/crl.rsa.2048.pem
+# /etc/openvpn/ca.rsa.2048.crt
+# /etc/openvpn/openvpn.conf
+# /etc/openvpn/iptables.sh
+# /etc/openvpn/routing.sh
+# /etc/openvpn/update-resolv-conf
 # /etc/systemd/system/openvpn@openvpn.service
-# iptables.sh
-# routing.sh
-# /var/spool/cron/crontabs/root
 # /etc/iproute2/rt_tables
 # /etc/sysctl.d/9999-vpn.conf
-# /etc/openvpn/update-resolv-conf
 # /etc/resolvconf/resolv.conf.d/head
+# /var/spool/cron/crontabs/root
 # /etc/default/grub
 
 ##########################################################################
-# Variables
+# Introduction
 ##########################################################################
 
 red=$(tput setaf 1)
@@ -51,16 +53,60 @@ pink=$(tput setaf 5)
 cyan=$(tput setaf 6)
 devoid=$(tput sgr0)
 
+cat << EOF
+${green}
+   //           //              //           //
+ //// //////////////          //// //////////////
+   //           //             //            //
+ //// //////////////        ////  //////////////
+   //           //          ///            //
+ //// //////////////     ////  ///////////////
+   //           //      ///             //
+ //// //////////////////   ////////////////
+   //           /////              ///
+ //// ////////////   //////////////////
+   //        /////            ///
+ //// //////////// ///////////////
+   //    //     //       ///
+ ////  /////////// /////////
+   /////        //   //
+ /////////////////////
+   ///          ////
+ ///////////////////
+   //           ///
+ //// //////////////
+${blue}
+
+█▀ █▀█ █░░ █ ▀█▀   ▀█▀ █░█ █▄░█ █▄░█ █▀▀ █░░
+▄█ █▀▀ █▄▄ █ ░█░   ░█░ █▄█ █░▀█ █░▀█ ██▄ █▄▄
+
+    █░█ █▀█ █▄░█   █░█ █ ▄▀█   █▀█ █ ▄▀█
+    ▀▄▀ █▀▀ █░▀█   ▀▄▀ █ █▀█   █▀▀ █ █▀█
+
+${devoid}
+EOF
+
+##########################################################################
+# Variables
+##########################################################################
+
+# TODO: Possibly use ENV_VARs to bypass reads
+
 echo "${yellow}Enter your REGULAR username and password:"
-read -p 'Username: ' username
-read -p 'Password: ' password
+read -rp 'Username: ' username
+read -rp 'Password: ' password
 
-echo "Please enter your PIA username and Password"
-read -p 'Username: ' pia_user
-read -p 'Password: ' pia_pass
-
-log="/opt/split_tunnel.log"
+# TODO: Add reads for vpn_user and vpn_password as well.
 vpn_user="vpn"
+
+echo "Please enter your PIA username and password:"
+read -rp 'Username: ' pia_user
+read -rp 'Password: ' pia_pass
+
+# TODO: Allow the choice of which PIA network they prefer, but default to Sweden.
+
+# TODO: Possibly add read for log file location.
+log="/opt/split_tunnel.log"
 
 ##########################################################################
 # Main
@@ -72,12 +118,12 @@ vpn_user="vpn"
   exit 1
 }
 
-echo "${cyan}Step 1.${green} Install necessary Packages: openvpn, iptables and unzip${devoid}"
+echo "${cyan}Step 01.${green} Install necessary apt packages: ${pink}openvpn, iptables and unzip${devoid}"
 apt update >>"$log" 2>&1
 apt install openvpn iptables unzip -y >>"$log" 2>&1
 
-echo "${cyan}Step 2.${green} Create regular and vpn User, and add to one anothers groups${devoid}"
-# TODO: Make this user sudo capable
+echo "${cyan}Step 02.${green} Create users, and add to one another's groups: ${pink}$username $vpn_user${devoid}"
+# TODO: Make this user sudo capable?
 useradd "$username" -m -G www-data -s /bin/bash
 chpasswd <<<"$username:$password"
 useradd "$vpn_user" -m -G www-data -s /bin/bash
@@ -85,56 +131,166 @@ chpasswd <<<"$vpn_user:$password"
 usermod -aG "$vpn_user" "$username"
 usermod -aG "$username" "$vpn_user"
 
-echo "${cyan}Step 3.${green} Make OpenVPN Auto Login on Service Start${devoid}"
-touch "/etc/openvpn/login.txt"     # Ensure login.txt exists.
-{
-  echo "$pia_user"
-  echo "$pia_pass"
-} >>"/etc/openvpn/login.txt" # Add PIA login details to login.txt
+echo "${cyan}Step 03.${green} Save PIA Credentials for OpenVPN at ${pink}/etc/openvpn/login.txt${devoid}"
+cat > "/etc/openvpn/login.txt" << EOF
+$pia_user
+$pia_pass
+EOF
 chmod 600 "/etc/openvpn/login.txt" # Set perms to rw-------
-echo "${blue}Your PIA login details are now saved at ${pink}/etc/openvpn/login.txt${devoid}"
 
-echo "${cyan}Step 4.${green} Collect PIA Configuration Files: sweden.ovpn crl.rsa.2048.pem ca.rsa.2048.crt${devoid}"
+echo "${cyan}Step 04.${green} Collect required PIA files: ${pink}sweden.ovpn crl.rsa.2048.pem ca.rsa.2048.crt${devoid}"
 wget "https://www.privateinternetaccess.com/openvpn/openvpn.zip" -P "/etc/openvpn" >>"$log" 2>&1
 unzip "/etc/openvpn/openvpn.zip" "sweden.ovpn" "crl.rsa.2048.pem" "ca.rsa.2048.crt" -d "/etc/openvpn" >>"$log" 2>&1
 
-echo "${cyan}Step 5.${green} Create Modified PIA Configuration File for Split Tunneling${devoid}"
-# TODO: Generate this file locally, rather than downloading it.
-wget "https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn.conf" -P "/etc/openvpn" >>"$log" 2>&1
+echo "${cyan}Step 05.${green} Create OpenVPN Configuration File: ${pink}/etc/openvpn/openvpn.conf${devoid}"
+cat > "/etc/openvpn/openvpn.conf" << 'EOF'
+client
+dev tun
+proto udp
+remote sweden.privacy.network 1198
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+cipher aes-128-cbc
+auth sha1
+tls-client
+remote-cert-tls server
+auth-user-pass /etc/openvpn/login.txt
+auth-nocache
+comp-lzo
+verb 1
+reneg-sec 0
+crl-verify /etc/openvpn/crl.rsa.2048.pem
+ca /etc/openvpn/ca.rsa.2048.crt
+disable-occ
+script-security 2
+route-noexec
 
-echo "${cyan}Step 6.${green} Create systemd Service for OpenVPN${devoid}"
-# TODO: Generate this file locally, rather than downloading it.
-wget "https://raw.githubusercontent.com/Aethaeran/pia/master/openvpn%40openvpn.service" -P "/etc/systemd/system/" >>"$log" 2>&1
+#up and down scripts to be executed when VPN starts or stops
+up /etc/openvpn/iptables.sh
+down /etc/openvpn/update-resolv-conf
+EOF
 
-echo "${cyan}Step 7.${green} iptables Script for vpn User${devoid}"
-# TODO: Generate this file locally, rather than downloading it.
-wget "https://raw.githubusercontent.com/Aethaeran/pia/master/iptables.sh" -P "/etc/openvpn/" >>"$log" 2>&1
+echo "${cyan}Step 06.${green} Create systemd service: ${pink}/etc/systemd/system/openvpn@openvpn.service${devoid}"
+cat > "/etc/systemd/system/openvpn@openvpn.service" << 'EOF'
+[Unit]
+# HTPC Guides - www.htpcguides.com
+Description=OpenVPN connection to %i
+Documentation=man:openvpn(8)
+Documentation=https://community.openvpn.net/openvpn/wiki/Openvpn23ManPage
+Documentation=https://community.openvpn.net/openvpn/wiki/HOWTO
+After=network.target
+
+[Service]
+RuntimeDirectory=openvpn
+PrivateTmp=true
+KillMode=mixed
+Type=forking
+ExecStart=/usr/sbin/openvpn --daemon ovpn-%i --status /run/openvpn/%i.status 10 --cd /etc/openvpn --script-security 2 --config /etc/openvpn/%i.conf --writepid /run/openvpn/%i.pid
+PIDFile=/run/openvpn/%i.pid
+ExecReload=/bin/kill -HUP $MAINPID
+WorkingDirectory=/etc/openvpn
+Restart=on-failure
+RestartSec=3
+ProtectSystem=yes
+LimitNPROC=10
+DeviceAllow=/dev/null rw
+DeviceAllow=/dev/net/tun rw
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "${cyan}Step 07.${green} Create iptables script for vpn user: ${pink}/etc/openvpn/iptables.sh${devoid}"
+cat > "/etc/openvpn/iptables.sh" << 'EOF'
+#! /bin/bash
+# Niftiest Software – www.niftiestsoftware.com
+# Modified version by HTPC Guides – www.htpcguides.com
+
+export INTERFACE="tun0"
+export VPNUSER="vpn"
+export LOCALIP="192.168.1.110"
+export NETIF="eth0"
+
+# flushes all the iptables rules, if you have other rules to use then add them into the script
+iptables -F -t nat
+iptables -F -t mangle
+iptables -F -t filter
+
+# mark packets from $VPNUSER
+iptables -t mangle -A OUTPUT -j CONNMARK --restore-mark
+iptables -t mangle -A OUTPUT ! --dest $LOCALIP -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT --dest $LOCALIP -p udp --dport 53 -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT --dest $LOCALIP -p tcp --dport 53 -m owner --uid-owner $VPNUSER -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT ! --src $LOCALIP -j MARK --set-mark 0x1
+iptables -t mangle -A OUTPUT -j CONNMARK --save-mark
+
+# allow responses
+iptables -A INPUT -i $INTERFACE -m conntrack --ctstate ESTABLISHED -j ACCEPT
+
+# block everything incoming on $INTERFACE to prevent accidental exposing of ports
+iptables -A INPUT -i $INTERFACE -j REJECT
+
+# let $VPNUSER access lo and $INTERFACE
+iptables -A OUTPUT -o lo -m owner --uid-owner $VPNUSER -j ACCEPT
+iptables -A OUTPUT -o $INTERFACE -m owner --uid-owner $VPNUSER -j ACCEPT
+
+# all packets on $INTERFACE needs to be masqueraded
+iptables -t nat -A POSTROUTING -o $INTERFACE -j MASQUERADE
+
+# reject connections from predator IP going over $NETIF
+iptables -A OUTPUT ! --src $LOCALIP -o $NETIF -j REJECT
+
+# Start routing script
+/etc/openvpn/routing.sh
+
+exit 0
+EOF
 localipaddr=$(curl api.ipify.org -s)
 sed -e "s/export LOCALIP=\"192.168.1.110\"/export LOCALIP=\"${localipaddr}\"/g" -i.backup "/etc/openvpn/iptables.sh"
 interface=$(ip route list | grep default | cut -f5 -d" ")
 sed -e "s/export NETIF=\"eth0\"/export NETIF=\"${interface}\"/g" -i "/etc/openvpn/iptables.sh"
 chmod +x "/etc/openvpn/iptables.sh" # Make the iptables script executable
 
-echo "${cyan}Step 8.${green} Routing Rules Script for the Marked Packets${devoid}"
-# TODO: Generate this file locally, rather than downloading it.
-wget "https://raw.githubusercontent.com/Aethaeran/pia/master/routing.sh" -P "/etc/openvpn/" >>"$log" 2>&1
+echo "${cyan}Step 08.${green} Create routing rules script: ${pink}/etc/openvpn/routing.sh${devoid}"
+cat > "/etc/openvpn/routing.sh" << 'EOF'
+#! /bin/bash
+# Niftiest Software – www.niftiestsoftware.com
+# Modified version by HTPC Guides – www.htpcguides.com
+
+VPNIF="tun0"
+VPNUSER="vpn"
+GATEWAYIP=$(ifconfig $VPNIF | egrep -o '([0-9]{1,3}\.){3}[0-9]{1,3}' | egrep -v '255|(127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})' | tail -n1)
+if [[ `ip rule list | grep -c 0x1` == 0 ]]; then
+ip rule add from all fwmark 0x1 lookup $VPNUSER
+fi
+ip route replace default via $GATEWAYIP table $VPNUSER
+ip route append default via 127.0.0.1 dev lo table $VPNUSER
+ip route flush cache
+
+# run update-resolv-conf script to set VPN DNS
+/etc/openvpn/update-resolv-conf
+
+exit 0
+EOF
 chmod +x "/etc/openvpn/routing.sh" # Finally, make the script executable
 
-echo "${cyan}Step 9.${green} Configure Split Tunnel VPN Routing${devoid}"
+echo "${cyan}Step 09.${green} Configure Split Tunnel VPN Routing by editing: ${pink}/etc/iproute2/rt_tables${devoid}"
 echo "200     vpn" >>"/etc/iproute2/rt_tables"
 
-echo "${cyan}Step 10.${green} Change Reverse Path Filtering${devoid}"
+echo "${cyan}Step 10.${green} Change Reverse Path Filtering by editing: ${pink}/etc/sysctl.d/9999-vpn.conf${devoid}"
 echo "net.ipv4.conf.all.rp_filter = 2" >"/etc/sysctl.d/9999-vpn.conf"
 echo "net.ipv4.conf.default.rp_filter = 2" >>"/etc/sysctl.d/9999-vpn.conf"
 echo "net.ipv4.conf.eth0.rp_filter = 2" >>"/etc/sysctl.d/9999-vpn.conf"
 sysctl --system >>"$log" 2>&1 # Apply new sysctl rules
 
-echo "${cyan}Step 11.${green} Configure VPN DNS Servers to Stop DNS Leaks${devoid}"
+echo "${cyan}Step 11.${green} Configure VPN DNS Servers to Stop DNS Leaks in: ${pink}/etc/openvpn/update-resolv-conf${devoid}"
 sed -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" -i.backup "/etc/openvpn/update-resolv-conf"
 sed -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" -i "/etc/openvpn/update-resolv-conf"
 sed -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" -i "/etc/openvpn/update-resolv-conf"
 
-echo "${cyan}Step 12.${green} Set persistent iptable rules by installing iptables-persistent${devoid}"
+echo "${cyan}Step 12.${green} Set persistent iptable rules by installing: ${pink}iptables-persistent${devoid}"
 iptables --flush                                                                                    # Flush current iptables rules - Delete all rules in chain or all chains
 iptables --delete-chain                                                                             # Delete a user-defined chain
 # TODO: Are the 'sudo' in the following two lines necessaru?
@@ -143,7 +299,7 @@ echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo deb
 iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP                                         # Add rule, which will block vpn user’s access to Internet (except the loopback device).
 apt install iptables-persistent -y >>"$log" 2>&1                                                    # Install iptables-persistent to save this single rule that will be always applied on each system start.
 
-echo "${cyan}Step 13.${green} Set Permanent DNS Nameservers ${devoid}"
+echo "${cyan}Step 13.${green} Set Permanent DNS Nameservers to eliminate DNS Leaks with: ${pink}resolvconf${green} ${devoid}"
 apt install resolvconf >>"$log" 2>&1
 {
   echo "nameserver 209.222.18.222"
@@ -161,7 +317,7 @@ resolvconf -u >>"$log" 2>&1
   echo "@reboot sudo resolvconf -u"
 ) | crontab - # Add cronjob to root
 
-echo "${cyan}Step 14.${green} Disable IPv6 to prevent leaks.${devoid}"
+echo "${cyan}Step 14.${green} Disable IPv6 entirely to eliminate IPv6 leaks with: ${pink}systcl${devoid}"
 # This disables IPv6 immediately
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >>"$log" 2>&1
 sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
@@ -171,6 +327,8 @@ sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
 sed -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/GRUB_CMDLINE_LINUX_DEFAULT=\"ipv6.disable=1\"/g' -i "/etc/default/grub"
 update-grub >>"$log" 2>&1
 
-echo "${cyan}Step 15.${green} Start the service.${devoid}"
+echo "${cyan}Step 15.${green} Start the systemd service: ${pink}openvpn@openvpn${devoid}"
 systemctl enable openvpn@openvpn.service >>"$log" 2>&1 # Now enable the openvpn@openvpn.service
 systemctl start openvpn@openvpn >>"$log" 2>&1          # Starting openvpn service
+
+echo "${yellow}The server requires a reboot to finalise this installation. Please reboot now.${devoid}"
