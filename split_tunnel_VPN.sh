@@ -292,9 +292,8 @@ sed -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3
 echo "${cyan}Step 12.${green} Set persistent iptable rules by installing: ${pink}iptables-persistent${devoid}"
 iptables --flush                                                                                    # Flush current iptables rules - Delete all rules in chain or all chains
 iptables --delete-chain                                                                             # Delete a user-defined chain
-# TODO: Are the 'sudo' in the following two lines necessaru?
-echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections # Bypass ipv4 confirmation when installing iptables-persistent
-echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections # Bypass ipv6 confirmation when installing iptables-persistent
+echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections # Bypass ipv4 confirmation when installing iptables-persistent
+echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections # Bypass ipv6 confirmation when installing iptables-persistent
 iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP                                         # Add rule, which will block vpn user’s access to Internet (except the loopback device).
 apt install iptables-persistent -y >>"$log" 2>&1                                                    # Install iptables-persistent to save this single rule that will be always applied on each system start.
 
