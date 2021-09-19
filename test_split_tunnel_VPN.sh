@@ -33,21 +33,19 @@ function check_dns_servers() {
 
 echo "${cyan}Check if created and modified files exist and are accurate${devoid}"
 check_if_exists /etc/systemd/system/openvpn@openvpn.service
-check_if_exists /etc/openvpn/login.txt # TODO: Check our changes are in it
+check_if_exists /etc/openvpn/login.txt                                                                 # TODO: Check our changes are in it
 check_if_exists /etc/openvpn/openvpn.zip
-check_if_exists /etc/openvpn/sweden.ovpn
 check_if_exists /etc/openvpn/crl.rsa.2048.pem
 check_if_exists /etc/openvpn/ca.rsa.2048.crt
 check_if_exists /etc/openvpn/openvpn.conf
 check_if_exists /etc/openvpn/iptables.sh && check_if_executable /etc/openvpn/iptables.sh
 check_if_exists /etc/openvpn/routing.sh && check_if_executable /etc/openvpn/routing.sh
-check_if_exists /etc/openvpn/update-resolv-conf && check_if_executable /etc/openvpn/update-resolv-conf # TODO: Check our changes are in it
 check_if_exists /etc/iproute2/rt_tables                                                                # TODO: Check our changes are in it
 check_if_exists /etc/sysctl.d/9999-vpn.conf                                                            # TODO: Check our changes are in it
 check_if_exists /etc/resolvconf/resolv.conf.d/head                                                     # TODO: Check our changes are in it
-# cat /etc/resolv.conf
-check_if_exists /var/spool/cron/crontabs/root # TODO: Check our changes are in it
-check_if_exists /etc/default/grub             # TODO: Check our changes are in it
+check_if_exists /var/spool/cron/crontabs/root                                                          # TODO: Check our changes are in it
+check_if_exists /etc/rc.local                                                                          # TODO: Check our changes are in it
+check_if_exists /etc/sysctl.conf                                                                       # TODO: Check our changes are in it
 
 echo "${cyan}Check DNS Servers${devoid}"
 if check_dns_servers == "209.222.18.222\n209.222.18.218\n8.8.8.8"; then
