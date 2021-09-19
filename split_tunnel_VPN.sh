@@ -40,6 +40,8 @@
 # /etc/resolvconf/resolv.conf.d/head
 # /var/spool/cron/crontabs/root
 # /etc/default/grub
+# /etc/rc.local
+# /etc/sysctl.conf
 
 ##########################################################################
 # Introduction
@@ -53,7 +55,7 @@ pink=$(tput setaf 5)
 cyan=$(tput setaf 6)
 devoid=$(tput sgr0)
 
-cat << EOF
+cat <<EOF
 ${green}
    //           //              //           //
  //// //////////////          //// //////////////
@@ -131,7 +133,7 @@ usermod -aG "$vpn_user" "$username"
 usermod -aG "$username" "$vpn_user"
 
 echo "${cyan}Step 03.${green} Save PIA Credentials for OpenVPN at ${pink}/etc/openvpn/login.txt${devoid}"
-cat > "/etc/openvpn/login.txt" << EOF
+cat >"/etc/openvpn/login.txt" <<EOF
 $pia_user
 $pia_pass
 EOF
@@ -142,7 +144,7 @@ wget "https://www.privateinternetaccess.com/openvpn/openvpn.zip" -P "/etc/openvp
 unzip "/etc/openvpn/openvpn.zip" "sweden.ovpn" "crl.rsa.2048.pem" "ca.rsa.2048.crt" -d "/etc/openvpn" >>"$log" 2>&1
 
 echo "${cyan}Step 05.${green} Create OpenVPN Configuration File: ${pink}/etc/openvpn/openvpn.conf${devoid}"
-cat > "/etc/openvpn/openvpn.conf" << 'EOF'
+cat >"/etc/openvpn/openvpn.conf" <<'EOF'
 client
 dev tun
 proto udp
@@ -172,7 +174,7 @@ up /etc/openvpn/iptables.sh
 EOF
 
 echo "${cyan}Step 06.${green} Create systemd service: ${pink}/etc/systemd/system/openvpn@openvpn.service${devoid}"
-cat > "/etc/systemd/system/openvpn@openvpn.service" << 'EOF'
+cat >"/etc/systemd/system/openvpn@openvpn.service" <<'EOF'
 [Unit]
 # HTPC Guides - www.htpcguides.com
 Description=OpenVPN connection to %i
@@ -202,7 +204,7 @@ WantedBy=multi-user.target
 EOF
 
 echo "${cyan}Step 07.${green} Create iptables script for vpn user: ${pink}/etc/openvpn/iptables.sh${devoid}"
-cat > "/etc/openvpn/iptables.sh" << 'EOF'
+cat >"/etc/openvpn/iptables.sh" <<'EOF'
 #! /bin/bash
 # Niftiest Software – www.niftiestsoftware.com
 # Modified version by HTPC Guides – www.htpcguides.com
@@ -253,7 +255,7 @@ sed -e "s/export NETIF=\"eth0\"/export NETIF=\"${interface}\"/g" -i "/etc/openvp
 chmod +x "/etc/openvpn/iptables.sh" # Make the iptables script executable
 
 echo "${cyan}Step 08.${green} Create routing rules script: ${pink}/etc/openvpn/routing.sh${devoid}"
-cat > "/etc/openvpn/routing.sh" << 'EOF'
+cat >"/etc/openvpn/routing.sh" <<'EOF'
 #! /bin/bash
 # Niftiest Software – www.niftiestsoftware.com
 # Modified version by HTPC Guides – www.htpcguides.com
@@ -290,12 +292,12 @@ sed -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_
 sed -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" -i "/etc/openvpn/update-resolv-conf"
 
 echo "${cyan}Step 12.${green} Set persistent iptable rules by installing: ${pink}iptables-persistent${devoid}"
-iptables --flush                                                                                    # Flush current iptables rules - Delete all rules in chain or all chains
-iptables --delete-chain                                                                             # Delete a user-defined chain
+iptables --flush                                                                               # Flush current iptables rules - Delete all rules in chain or all chains
+iptables --delete-chain                                                                        # Delete a user-defined chain
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections # Bypass ipv4 confirmation when installing iptables-persistent
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections # Bypass ipv6 confirmation when installing iptables-persistent
-iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP                                         # Add rule, which will block vpn user’s access to Internet (except the loopback device).
-apt install iptables-persistent -y >>"$log" 2>&1                                                    # Install iptables-persistent to save this single rule that will be always applied on each system start.
+iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP                                    # Add rule, which will block vpn user’s access to Internet (except the loopback device).
+apt install iptables-persistent -y >>"$log" 2>&1                                               # Install iptables-persistent to save this single rule that will be always applied on each system start.
 
 echo "${cyan}Step 13.${green} Set Permanent DNS Nameservers to eliminate DNS Leaks with: ${pink}resolvconf${green} ${devoid}"
 apt install resolvconf >>"$log" 2>&1
@@ -318,14 +320,10 @@ resolvconf -u >>"$log" 2>&1
 echo "${cyan}Step 14.${green} Disable IPv6 entirely to eliminate IPv6 leaks with: ${pink}systcl${devoid}"
 # This disables IPv6 immediately
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >>"$log" 2>&1
-sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
+#sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
 
-# TODO: There was an instance where adding this to grub disabled someone's internet entirely. Alternate method in references should be used.
-
-# This disables IPv6 on reboot va grub
-# TODO: Change this to insert after other set variables if they exist.
-sed -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/GRUB_CMDLINE_LINUX_DEFAULT=\"ipv6.disable=1\"/g' -i "/etc/default/grub"
-update-grub >>"$log" 2>&1
+echo "/etc/init.d/procps restart" >>/etc/rc.local
+echo "net.ipv6.conf.all.disable_ipv6=1" >>/etc/sysctl.conf
 
 echo "${cyan}Step 15.${green} Start the systemd service: ${pink}openvpn@openvpn${devoid}"
 systemctl enable openvpn@openvpn.service >>"$log" 2>&1 # Now enable the openvpn@openvpn.service
