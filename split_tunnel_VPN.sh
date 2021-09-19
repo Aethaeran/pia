@@ -18,8 +18,7 @@
 # https://phoenixnap.com/kb/crontab-reboot
 # https://linuxconfig.org/how-to-disable-ipv6-address-on-ubuntu-20-04-lts-focal-fossa
 # https://stackoverflow.com/questions/4880290/how-do-i-create-a-crontab-through-a-script
-# TODO: https://pimylifeup.com/ubuntu-disable-ipv6/
-# TODO: https://www.explorelinux.com/how-and-why-to-disable-ipv6-in-ubuntu/
+# https://pimylifeup.com/ubuntu-disable-ipv6/
 
 ##########################################################################
 # File created and modified by this script
@@ -39,7 +38,6 @@
 # /etc/sysctl.d/9999-vpn.conf
 # /etc/resolvconf/resolv.conf.d/head
 # /var/spool/cron/crontabs/root
-# /etc/default/grub
 # /etc/rc.local
 # /etc/sysctl.conf
 
@@ -93,6 +91,7 @@ EOF
 ##########################################################################
 
 # TODO: Possibly use ENV_VARs to bypass reads
+# TODO: Add logic to ensure these are actually filled in.
 
 echo "${yellow}Enter your PRIMARY username and password:"
 read -rp 'Username: ' username
@@ -107,8 +106,13 @@ read -rp 'Password: ' pia_pass
 
 # TODO: Allow the choice of which PIA network they prefer, but default to Sweden.
 
-# TODO: Possibly add read for log file location.
-log="/opt/split_tunnel.log"
+echo "Please enter which file to save the log file to. Will use /opt/split_tunnel.log if nothing is entered."
+read -rp 'Log File: ' log
+if [[ -z $log ]];then
+  log="/opt/split_tunnel.log"
+  echo "Nothing entered. So setting default log location: $log"
+fi
+echo "Log file being saved to: $log"
 
 ##########################################################################
 # Main
@@ -286,10 +290,10 @@ echo "net.ipv4.conf.default.rp_filter = 2" >>"/etc/sysctl.d/9999-vpn.conf"
 echo "net.ipv4.conf.eth0.rp_filter = 2" >>"/etc/sysctl.d/9999-vpn.conf"
 sysctl --system >>"$log" 2>&1 # Apply new sysctl rules
 
-echo "${cyan}Step 11.${green} Configure VPN DNS Servers to Stop DNS Leaks in: ${pink}/etc/openvpn/update-resolv-conf${devoid}"
-sed -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" -i.backup "/etc/openvpn/update-resolv-conf"
-sed -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" -i "/etc/openvpn/update-resolv-conf"
-sed -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" -i "/etc/openvpn/update-resolv-conf"
+#echo "${cyan}Step 11.${green} Configure VPN DNS Servers to Stop DNS Leaks in: ${pink}/etc/openvpn/update-resolv-conf${devoid}"
+#sed -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" -i.backup "/etc/openvpn/update-resolv-conf"
+#sed -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" -i "/etc/openvpn/update-resolv-conf"
+#sed -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" -i "/etc/openvpn/update-resolv-conf"
 
 echo "${cyan}Step 12.${green} Set persistent iptable rules by installing: ${pink}iptables-persistent${devoid}"
 iptables --flush                                                                               # Flush current iptables rules - Delete all rules in chain or all chains
@@ -300,7 +304,7 @@ iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP                     
 apt install iptables-persistent -y >>"$log" 2>&1                                               # Install iptables-persistent to save this single rule that will be always applied on each system start.
 
 echo "${cyan}Step 13.${green} Set Permanent DNS Nameservers to eliminate DNS Leaks with: ${pink}resolvconf${green} ${devoid}"
-apt install resolvconf >>"$log" 2>&1
+apt install resolvconf >>"$log" 2>&1 # TODO: For some reason if resolvconf is installed earlier than this it can cause issues. Should look into this.
 {
   echo "nameserver 209.222.18.222"
   echo "nameserver 209.222.18.218"
