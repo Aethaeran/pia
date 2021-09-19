@@ -290,12 +290,7 @@ echo "net.ipv4.conf.default.rp_filter = 2" >>"/etc/sysctl.d/9999-vpn.conf"
 echo "net.ipv4.conf.eth0.rp_filter = 2" >>"/etc/sysctl.d/9999-vpn.conf"
 sysctl --system >>"$log" 2>&1 # Apply new sysctl rules
 
-#echo "${cyan}Step 11.${green} Configure VPN DNS Servers to Stop DNS Leaks in: ${pink}/etc/openvpn/update-resolv-conf${devoid}"
-#sed -e "s/#     foreign_option_1='dhcp-option DNS 193.43.27.132'/foreign_option_1=\'dhcp-option DNS 209.222.18.222\'/g" -i.backup "/etc/openvpn/update-resolv-conf"
-#sed -e "s/#     foreign_option_2='dhcp-option DNS 193.43.27.133'/foreign_option_2=\'dhcp-option DNS 209.222.18.218\'/g" -i "/etc/openvpn/update-resolv-conf"
-#sed -e "s/#     foreign_option_3='dhcp-option DOMAIN be.bnc.ch'/foreign_option_3=\'dhcp-option DNS 8.8.8.8\'/g" -i "/etc/openvpn/update-resolv-conf"
-
-echo "${cyan}Step 12.${green} Set persistent iptable rules by installing: ${pink}iptables-persistent${devoid}"
+echo "${cyan}Step 11.${green} Set persistent iptable rules by installing: ${pink}iptables-persistent${devoid}"
 iptables --flush                                                                               # Flush current iptables rules - Delete all rules in chain or all chains
 iptables --delete-chain                                                                        # Delete a user-defined chain
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections # Bypass ipv4 confirmation when installing iptables-persistent
@@ -303,7 +298,7 @@ echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-
 iptables -A OUTPUT ! -o lo -m owner --uid-owner vpn -j DROP                                    # Add rule, which will block vpn user’s access to Internet (except the loopback device).
 apt install iptables-persistent -y >>"$log" 2>&1                                               # Install iptables-persistent to save this single rule that will be always applied on each system start.
 
-echo "${cyan}Step 13.${green} Set Permanent DNS Nameservers to eliminate DNS Leaks with: ${pink}resolvconf${green} ${devoid}"
+echo "${cyan}Step 12.${green} Set Permanent DNS Nameservers to eliminate DNS Leaks with: ${pink}resolvconf${green} ${devoid}"
 apt install resolvconf >>"$log" 2>&1 # TODO: For some reason if resolvconf is installed earlier than this it can cause issues. Should look into this.
 {
   echo "nameserver 209.222.18.222"
@@ -321,7 +316,7 @@ resolvconf -u >>"$log" 2>&1
   echo "@reboot sudo resolvconf -u"
 ) | crontab - # Add cronjob to root
 
-echo "${cyan}Step 14.${green} Disable IPv6 entirely to eliminate IPv6 leaks with: ${pink}systcl${devoid}"
+echo "${cyan}Step 13.${green} Disable IPv6 entirely to eliminate IPv6 leaks with: ${pink}systcl${devoid}"
 # This disables IPv6 immediately
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >>"$log" 2>&1
 #sysctl -w net.ipv6.conf.default.disable_ipv6=1 >>"$log" 2>&1
@@ -329,8 +324,6 @@ sysctl -w net.ipv6.conf.all.disable_ipv6=1 >>"$log" 2>&1
 echo "/etc/init.d/procps restart" >>/etc/rc.local
 echo "net.ipv6.conf.all.disable_ipv6=1" >>/etc/sysctl.conf
 
-echo "${cyan}Step 15.${green} Start the systemd service: ${pink}openvpn@openvpn${devoid}"
+echo "${cyan}Step 14.${green} Start the systemd service: ${pink}openvpn@openvpn${devoid}"
 systemctl enable openvpn@openvpn.service >>"$log" 2>&1 # Now enable the openvpn@openvpn.service
 systemctl start openvpn@openvpn >>"$log" 2>&1          # Starting openvpn service
-
-echo "${yellow}The server requires a reboot to finalise this installation. Please reboot now.${devoid}"
