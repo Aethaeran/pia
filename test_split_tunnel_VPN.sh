@@ -105,7 +105,7 @@ else
   #shellcheck disable=SC2207
   interfaces=($(ls /proc/sys/net/ipv6/conf/))
   for interface in "${interfaces[@]}"; do
-    if [[ $(cat "/proc/sys/net/ipv6/conf/$interface/disable_ipv6") == 0 ]]; then
+    if [[ $(cat "/proc/sys/net/ipv6/conf/$interface/disable_ipv6") == 1 ]]; then
       echo "${green}IPv6 $interface is disabled in sysctl${devoid}"
     else
       echo "${red}IPv6 $interface is enabled in sysctl${devoid}"
