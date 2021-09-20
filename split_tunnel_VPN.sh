@@ -124,9 +124,9 @@ echo "Log file being saved to: $log"
   exit 1
 }
 
-echo "${cyan}Step 01.${green} Install necessary apt packages: ${pink}openvpn, iptables and unzip${devoid}"
+echo "${cyan}Step 01.${green} Install necessary apt packages: ${pink}curl, openvpn, iptables and unzip${devoid}"
 apt update >>"$log" 2>&1
-apt install openvpn iptables unzip -y >>"$log" 2>&1
+apt install curl openvpn iptables unzip -y >>"$log" 2>&1
 
 echo "${cyan}Step 02.${green} Create users, and add to one another's groups: ${pink}$username $vpn_user${devoid}"
 useradd "$username" -m -G sudo -s /bin/bash
