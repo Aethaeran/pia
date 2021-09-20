@@ -26,9 +26,19 @@ function check_if_executable() {
 }
 
 function check_dns_servers() {
+  # How I use to check.
+  # cat /etc/resolv.conf
+  # How we I check now.
   systemctl start systemd-resolved
   servers="$(systemd-resolve --status | sed -zE 's|.*DNS Servers:(.*?)DNSSEC NTA.*|\1|g' | sed -e 's| ||g')"
   systemctl stop systemd-resolved
+}
+
+
+# "Checking if you are root user, otherwise the script will not work."
+[[ $(id -u) -eq 0 ]] || {
+  echo >&2 "${red}Must be root to run this script. Run 'sudo su -' prior to running this script."
+  exit 1
 }
 
 echo "${cyan}Check if created and modified files exist and are accurate${devoid}"
